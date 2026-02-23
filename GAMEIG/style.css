@@ -367,3 +367,317 @@ canvas {
     background: rgba(255, 255, 255, 0.08) !important;
     color: #ccc !important;
 }
+
+/* ===== KINEMATICS PARAMETER PANEL ===== */
+#kinematics-panel {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.9);
+    width: 370px;
+    max-height: 85vh;
+    overflow-y: auto;
+    background: rgba(5, 10, 15, 0.94);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(0, 255, 255, 0.25);
+    border-radius: 12px;
+    padding: 22px;
+    z-index: 100;
+    pointer-events: auto;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.25s ease, transform 0.25s ease, visibility 0.25s;
+    box-shadow: 0 0 40px rgba(0, 255, 255, 0.08), inset 0 0 30px rgba(0, 0, 0, 0.3);
+}
+
+#kinematics-panel.visible {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(-50%, -50%) scale(1);
+}
+
+#kinematics-panel::-webkit-scrollbar {
+    width: 4px;
+}
+
+#kinematics-panel::-webkit-scrollbar-thumb {
+    background: rgba(0, 255, 255, 0.2);
+    border-radius: 2px;
+}
+
+#kinematics-panel h2 {
+    font-size: 0.85rem;
+    letter-spacing: 3px;
+    color: #00ffff;
+    text-align: center;
+    margin-bottom: 16px;
+    background: none;
+    -webkit-text-fill-color: #00ffff;
+}
+
+/* Mode selector */
+.kin-mode-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    gap: 10px;
+}
+
+.kin-mode-row label {
+    font-size: 0.65rem;
+    color: #666;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+
+.kin-mode-row select,
+.kin-mini-select {
+    flex: 1;
+    background: rgba(0, 0, 0, 0.4);
+    color: #00ffff;
+    border: 1px solid rgba(0, 255, 255, 0.3);
+    padding: 5px 8px;
+    border-radius: 4px;
+    font-family: var(--font-main);
+    font-size: 0.72rem;
+    cursor: pointer;
+    outline: none;
+}
+
+.kin-mode-row select:hover,
+.kin-mini-select:hover {
+    background: rgba(0, 255, 255, 0.08);
+}
+
+.kin-mode-row select option,
+.kin-mini-select option {
+    background: #111;
+    color: #fff;
+}
+
+/* Dynamic sliders */
+.kin-slider-group {
+    margin-bottom: 12px;
+}
+
+.kin-slider-group label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.68rem;
+    color: #aaa;
+    letter-spacing: 1px;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+}
+
+.kin-slider-group label span {
+    color: #00ffff;
+    font-weight: 700;
+}
+
+.kin-slider-group input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+}
+
+.kin-slider-group input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    background: #00ffff;
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 0 8px rgba(0, 255, 255, 0.6);
+    transition: transform 0.15s;
+}
+
+.kin-slider-group input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.3);
+}
+
+/* Toggle groups (checkboxes) */
+.kin-toggle-group {
+    margin-bottom: 10px;
+}
+
+.kin-toggle-group label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.68rem;
+    color: #888;
+    letter-spacing: 1px;
+    cursor: pointer;
+    text-transform: uppercase;
+}
+
+.kin-toggle-group input[type="checkbox"] {
+    accent-color: #00ffff;
+    width: 14px;
+    height: 14px;
+    cursor: pointer;
+}
+
+/* Drag mode row */
+.kin-drag-mode-row {
+    margin-left: 10px;
+    padding-left: 10px;
+    border-left: 2px solid rgba(0, 255, 255, 0.15);
+    margin-bottom: 10px;
+}
+
+.kin-drag-mode-row .kin-mini-select {
+    width: 100%;
+    margin-bottom: 10px;
+}
+
+/* Stats */
+.kin-stats {
+    background: rgba(0, 255, 255, 0.04);
+    border: 1px solid rgba(0, 255, 255, 0.12);
+    border-radius: 8px;
+    padding: 10px;
+    margin: 14px 0;
+}
+
+.kin-stat {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.68rem;
+    color: #888;
+    padding: 3px 0;
+    letter-spacing: 0.5px;
+}
+
+.kin-stat span:last-child {
+    color: #00ffff;
+    font-weight: 700;
+    font-family: monospace;
+}
+
+/* Graph toggles */
+.kin-graph-toggles {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 12px;
+    padding: 8px 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.kin-graph-toggles label {
+    font-size: 0.65rem;
+    color: #777;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.kin-graph-toggles input[type="checkbox"] {
+    accent-color: #00ffff;
+    width: 12px;
+    height: 12px;
+}
+
+/* Action buttons */
+.kin-buttons {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.kin-launch {
+    flex: 1;
+    background: rgba(0, 255, 255, 0.12) !important;
+    border: 1px solid #00ffff !important;
+    color: #00ffff !important;
+    padding: 10px !important;
+    font-size: 0.8rem !important;
+    font-weight: 700 !important;
+    letter-spacing: 2px;
+    text-align: center !important;
+    border-radius: 6px !important;
+    transition: all 0.2s !important;
+}
+
+.kin-launch:hover {
+    background: rgba(0, 255, 255, 0.25) !important;
+    box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+    transform: scale(1.02);
+}
+
+.kin-reset {
+    flex: 0.5;
+    background: rgba(255, 255, 255, 0.03) !important;
+    border: 1px solid rgba(0, 255, 255, 0.2) !important;
+    color: #00ffff !important;
+    padding: 10px !important;
+    font-size: 0.72rem !important;
+    text-align: center !important;
+    border-radius: 6px !important;
+    letter-spacing: 1px;
+}
+
+.kin-reset:hover {
+    background: rgba(0, 255, 255, 0.08) !important;
+}
+
+.kin-cancel {
+    flex: 0.5;
+    background: rgba(255, 255, 255, 0.03) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    color: #888 !important;
+    padding: 10px !important;
+    font-size: 0.72rem !important;
+    text-align: center !important;
+    border-radius: 6px !important;
+    letter-spacing: 1px;
+}
+
+.kin-cancel:hover {
+    background: rgba(255, 255, 255, 0.08) !important;
+    color: #ccc !important;
+}
+
+/* ===== KINEMATICS GRAPHS ===== */
+#kinematics-graphs {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    display: none;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 50;
+    pointer-events: none;
+}
+
+.kin-graph-wrapper {
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+}
+
+.kin-graph-label {
+    font-size: 0.6rem;
+    color: #555;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 4px 8px 2px;
+    background: rgba(0, 0, 0, 0.7);
+}
+
+.kin-graph-canvas {
+    display: block;
+}

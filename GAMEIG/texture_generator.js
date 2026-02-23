@@ -58,35 +58,77 @@ export function createGrassTexture() {
     canvas.height = size;
     const ctx = canvas.getContext('2d');
 
-    // 1. Base Green
-    ctx.fillStyle = '#2d8f2d';
+    // 1. Base Gradient (Deep lush green to vibrant sunlit yellow-green)
+    const baseGrad = ctx.createLinearGradient(0, 0, size, size);
+    baseGrad.addColorStop(0, '#1c4a16'); // Dark shaded grass
+    baseGrad.addColorStop(0.5, '#3b8627'); // Mid green
+    baseGrad.addColorStop(1, '#6cb33b'); // Sunlit golden-green
+    ctx.fillStyle = baseGrad;
     ctx.fillRect(0, 0, size, size);
 
-    // 2. Grass Blades (Noise)
-    for (let i = 0; i < 100000; i++) {
+    // 2. Fine Grass Blades (Layered strokes)
+    // Dark undergrowth
+    ctx.globalAlpha = 0.4;
+    for (let i = 0; i < 60000; i++) {
         const x = Math.random() * size;
         const y = Math.random() * size;
-        // Varying greens
-        const g = Math.floor(Math.random() * 100 + 100);
-        ctx.fillStyle = `rgb(30, ${g}, 30)`;
-        ctx.fillRect(x, y, 1, 3);
+        ctx.fillStyle = '#11330b';
+        ctx.fillRect(x, y, 1 + Math.random(), 4 + Math.random() * 6);
     }
 
-    // 3. Dirt patches
-    for (let i = 0; i < 20; i++) {
+    // Mid-level blades
+    ctx.globalAlpha = 0.5;
+    for (let i = 0; i < 50000; i++) {
+        const x = Math.random() * size;
+        const y = Math.random() * size;
+        ctx.fillStyle = '#30771e';
+        ctx.fillRect(x, y, 1.5, 6 + Math.random() * 8);
+    }
+
+    // Golden/Sunlit highlight blades
+    ctx.globalAlpha = 0.6;
+    for (let i = 0; i < 30000; i++) {
+        const x = Math.random() * size;
+        const y = Math.random() * size;
+        ctx.fillStyle = '#8cc14c'; // Light vibrant green
+        // Slight rotation for natural look
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate((Math.random() - 0.5) * 0.2); // +/- ~10 degrees
+        ctx.fillRect(0, 0, 1 + Math.random(), 8 + Math.random() * 10);
+        ctx.restore();
+    }
+
+    // 3. Subtle soft dirt/path noise (Very low opacity)
+    ctx.globalAlpha = 0.1;
+    for (let i = 0; i < 15; i++) {
         const cx = Math.random() * size;
         const cy = Math.random() * size;
-        const r = Math.random() * 30 + 10;
+        const r = Math.random() * 80 + 30;
 
+        const dirtGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+        dirtGrad.addColorStop(0, '#5a4625');
+        dirtGrad.addColorStop(1, 'transparent');
+        ctx.fillStyle = dirtGrad;
         ctx.beginPath();
         ctx.arc(cx, cy, r, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(100, 70, 30, 0.3)';
         ctx.fill();
     }
+
+    // Reset alpha
+    ctx.globalAlpha = 1.0;
 
     const texture = new THREE.CanvasTexture(canvas);
     texture.wrapS = THREE.RepeatWrapping;
     texture.wrapT = THREE.RepeatWrapping;
-    texture.repeat.set(8, 8); // Repeat more often for detailed grass
+
+    // Repeat much more densely (32x instead of 12x or 8x) to remove the "squares" look
+    // The tiles become so small that the repetition is indistinguishable
+    texture.repeat.set(32, 32);
+
+    // Anisotropy for better viewing at oblique angles (ground level)
+    texture.anisotropy = 16;
+    texture.colorSpace = THREE.SRGBColorSpace;
+
     return texture;
 }

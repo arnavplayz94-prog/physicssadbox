@@ -6,9 +6,10 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import * as CANNON from 'cannon-es';
 import { PlayerController } from './player.js';
 import { createMoonTexture, createGrassTexture } from './texture_generator.js';
-import { Projectile } from './projectile.js';
-import { PhysicsSimulation } from './physics_sim.js';
-import { ProjectileUI } from './projectile_ui.js';
+import { MotionObject } from './motion_object.js';
+import { KinematicsSimulation } from './kinematics_sim.js';
+import { KinematicsUI } from './kinematics_ui.js';
+import { KinematicsGraph } from './kinematics_graph.js';
 
 // --- CONFIGURATION ---
 const SETTINGS = {
@@ -51,10 +52,10 @@ world.addContactMaterial(defaultContactMaterial);
 // --- PLAYER CONTROLLER ---
 const player = new PlayerController(scene, world, camera, document.body);
 
-// --- PROJECTILE SYSTEM ---
-const physicsSimulation = new PhysicsSimulation();
-// ProjectileUI is initialised after DOM is ready (deferred below)
-let projectileUI = null;
+// --- KINEMATICS SYSTEM ---
+const kinematicsSimulation = new KinematicsSimulation();
+let kinematicsGraph = null; // Deferred — DOM not ready yet
+let kinematicsUI = null;
 
 // --- ENVIRONMENT SYSTEM ---
 const envObjects = { lights: [], meshes: [], helpers: [] };
@@ -201,37 +202,43 @@ window.changeEnvironment = (type) => {
 
     // --- GREEN FIELD MODE ---
     else if (type === 'field') {
-        const bg = 0x87CEEB; // Sky Blue
+        const bg = 0x87CEEB; // Clear sky blue
         scene.background = new THREE.Color(bg);
-        scene.fog = new THREE.FogExp2(bg, 0.002); // Light fog
+        scene.fog = new THREE.FogExp2(bg, 0.0008); // Very light fog
         gravity = -15; // Earth-ish
-        bloomPass.strength = 0.0; // NO BLOOM
-        bloomPass.threshold = 1;
+        bloomPass.strength = 0.15; // Subtle bloom
+        bloomPass.threshold = 0.85;
 
-        // Lights (Warm Sun - Very Dimmed)
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
-        const sunLight = new THREE.DirectionalLight(0xffdfba, 0.8);
-        sunLight.position.set(50, 100, 50);
+        // Lights (Golden Hour)
+        const ambientLight = new THREE.AmbientLight(0xffeedd, 0.5); // Warm ambient
+        const sunLight = new THREE.DirectionalLight(0xffcc66, 1.5); // Golden sun
+        sunLight.position.set(120, 60, 60);
         sunLight.castShadow = true;
+        sunLight.shadow.mapSize.width = 4096;
+        sunLight.shadow.mapSize.height = 4096;
+        sunLight.shadow.camera.left = -100;
+        sunLight.shadow.camera.right = 100;
+        sunLight.shadow.camera.top = 100;
+        sunLight.shadow.camera.bottom = -100;
+        sunLight.shadow.camera.far = 300;
 
         scene.add(ambientLight, sunLight);
         envObjects.lights.push(ambientLight, sunLight);
 
-        // 2D Sun Circle (Corner of sky)
-        const sunGeo = new THREE.CircleGeometry(8, 32);
+        // 2D Sun disc
+        const sunGeo = new THREE.CircleGeometry(20, 64);
         const sunMat = new THREE.MeshBasicMaterial({ color: 0xffffaa, side: THREE.DoubleSide });
         const sunMesh = new THREE.Mesh(sunGeo, sunMat);
-        // Position far away in top-right-ish corner
-        sunMesh.position.set(80, 80, -80);
-        sunMesh.lookAt(0, 0, 0); // Face center
+        sunMesh.position.copy(sunLight.position).multiplyScalar(2);
+        sunMesh.lookAt(camera.position);
         scene.add(sunMesh);
         envObjects.meshes.push(sunMesh);
 
-        // Floor (Green Grass)
-        const floorGeo = new THREE.PlaneGeometry(200, 200);
+        // Floor — completely flat
+        const floorGeo = new THREE.PlaneGeometry(500, 500);
         const floorMat = new THREE.MeshStandardMaterial({
             map: createGrassTexture(),
-            roughness: 1.0,
+            roughness: 0.9,
             metalness: 0.0
         });
         const floorMesh = new THREE.Mesh(floorGeo, floorMat);
@@ -239,76 +246,6 @@ window.changeEnvironment = (type) => {
         floorMesh.receiveShadow = true;
         scene.add(floorMesh);
         envObjects.meshes.push(floorMesh);
-
-        // Trees
-        for (let i = 0; i < 30; i++) {
-            const x = (Math.random() - 0.5) * 100;
-            const z = (Math.random() - 0.5) * 100;
-            if (Math.abs(x) < 5 && Math.abs(z) < 5) continue;
-
-            // Trunk
-            const trunkH = Math.random() * 2 + 1;
-            const trunkGeo = new THREE.CylinderGeometry(0.3, 0.4, trunkH, 8);
-            const trunkMat = new THREE.MeshStandardMaterial({ color: 0x8B4513, roughness: 0.9 });
-            const trunk = new THREE.Mesh(trunkGeo, trunkMat);
-            trunk.position.set(x, trunkH / 2, z);
-            trunk.castShadow = true;
-            trunk.receiveShadow = true;
-            scene.add(trunk);
-            envObjects.meshes.push(trunk);
-
-            // Leaves
-            const leavesGeo = new THREE.ConeGeometry(2, 4, 8);
-            const leavesMat = new THREE.MeshStandardMaterial({ color: 0x228B22, roughness: 0.8 });
-            const leaves = new THREE.Mesh(leavesGeo, leavesMat);
-            leaves.position.set(x, trunkH + 2, z);
-            leaves.castShadow = true;
-            scene.add(leaves);
-            envObjects.meshes.push(leaves);
-
-            // Physics (Trunk only)
-            const shape = new CANNON.Cylinder(0.4, 0.4, trunkH, 8);
-            const body = new CANNON.Body({ mass: 0, material: defaultMaterial });
-            const q = new CANNON.Quaternion();
-            q.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), 0);
-            body.addShape(shape, new CANNON.Vec3(0, 0, 0), q);
-            body.position.set(x, trunkH / 2, z);
-            world.addBody(body);
-            envObjects.meshes.push({ body });
-        }
-
-        // Lake
-        const lakeGeo = new THREE.CircleGeometry(15, 32);
-        const lakeMat = new THREE.MeshStandardMaterial({ color: 0x0077be, roughness: 0.1, metalness: 0.8, transparent: true, opacity: 0.8 });
-        const lake = new THREE.Mesh(lakeGeo, lakeMat);
-        lake.rotation.x = -Math.PI / 2;
-        lake.position.set(20, 0.05, -20); // Slightly above ground
-        scene.add(lake);
-        envObjects.meshes.push(lake);
-
-        // Rocks
-        for (let i = 0; i < 15; i++) {
-            const x = (Math.random() - 0.5) * 80;
-            const z = (Math.random() - 0.5) * 80;
-            const size = Math.random() * 0.5 + 0.3;
-
-            const rockGeo = new THREE.DodecahedronGeometry(size, 0);
-            const rockMat = new THREE.MeshStandardMaterial({ color: 0x777777, roughness: 0.8 });
-            const rock = new THREE.Mesh(rockGeo, rockMat);
-            rock.position.set(x, size / 2, z);
-            rock.castShadow = true;
-            rock.rotation.set(Math.random(), Math.random(), Math.random());
-            scene.add(rock);
-            envObjects.meshes.push(rock);
-
-            // Simple Box Collider
-            const shape = new CANNON.Box(new CANNON.Vec3(size / 2, size / 2, size / 2));
-            const body = new CANNON.Body({ mass: 0 });
-            body.addShape(shape);
-            body.position.set(x, size / 2, z);
-            world.addBody(body);
-            envObjects.meshes.push({ body });
-        }
     }
 
     // Physics Updates
@@ -363,6 +300,23 @@ function updateUI() {
 }
 
 // --- SPAWN LOGIC ---
+window.isKinematicsSpawnMode = false;
+window.toggleKinematicsMode = () => {
+    window.isKinematicsSpawnMode = !window.isKinematicsSpawnMode;
+    const btn = document.getElementById('btn-kinematics');
+    if (btn) {
+        if (window.isKinematicsSpawnMode) {
+            btn.innerText = "KINEMATICS [ON] [K]";
+            btn.style.color = "#000";
+            btn.style.backgroundColor = "#00ffff";
+        } else {
+            btn.innerText = "KINEMATICS [OFF] [K]";
+            btn.style.color = "#00ffff";
+            btn.style.backgroundColor = "transparent";
+        }
+    }
+};
+
 window.spawnBox = () => {
     const p = player.body.position;
     // Spawn in front of player
@@ -378,6 +332,12 @@ window.spawnBox = () => {
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     scene.add(mesh);
+
+    if (window.isKinematicsSpawnMode) {
+        const motionObj = new MotionObject(scene, spawnPos, { mesh });
+        kinematicsSimulation.addObject(motionObj);
+        return; // Skip physics
+    }
 
     const shape = new CANNON.Box(new CANNON.Vec3(size / 2, size / 2, size / 2));
     const body = new CANNON.Body({ mass: 1, position: new CANNON.Vec3(spawnPos.x, spawnPos.y, spawnPos.z), shape: shape, material: defaultMaterial });
@@ -401,6 +361,12 @@ window.spawnSphere = () => {
     mesh.receiveShadow = true;
     scene.add(mesh);
 
+    if (window.isKinematicsSpawnMode) {
+        const motionObj = new MotionObject(scene, spawnPos, { mesh });
+        kinematicsSimulation.addObject(motionObj);
+        return; // Skip physics
+    }
+
     const shape = new CANNON.Sphere(radius);
     const body = new CANNON.Body({ mass: 1, position: new CANNON.Vec3(spawnPos.x, spawnPos.y, spawnPos.z), shape: shape, material: defaultMaterial });
     world.addBody(body);
@@ -421,13 +387,20 @@ window.spawnTower = () => {
             const color = SETTINGS.colors[i % SETTINGS.colors.length];
             const mat = createNeonMaterial(color);
             const mesh = new THREE.Mesh(geo, mat);
-            mesh.position.set(spawnPos.x, i * 1.05 + 0.5, spawnPos.z);
+            const elementPos = new THREE.Vector3(spawnPos.x, i * 1.05 + 0.5, spawnPos.z);
+            mesh.position.copy(elementPos);
             mesh.castShadow = true;
             mesh.receiveShadow = true;
             scene.add(mesh);
 
+            if (window.isKinematicsSpawnMode) {
+                const motionObj = new MotionObject(scene, elementPos, { mesh });
+                kinematicsSimulation.addObject(motionObj);
+                return;
+            }
+
             const shape = new CANNON.Box(new CANNON.Vec3(size / 2, size / 2, size / 2));
-            const body = new CANNON.Body({ mass: 0.5, position: new CANNON.Vec3(spawnPos.x, i * 1.05 + 0.5, spawnPos.z), shape: shape, material: defaultMaterial });
+            const body = new CANNON.Body({ mass: 0.5, position: new CANNON.Vec3(elementPos.x, elementPos.y, elementPos.z), shape: shape, material: defaultMaterial });
             world.addBody(body);
             objectsToUpdate.push({ mesh, body });
             updateUI();
@@ -468,6 +441,12 @@ window.spawnBreakableBox = () => {
     mesh.position.copy(spawnPos);
     mesh.castShadow = true;
     scene.add(mesh);
+
+    if (window.isKinematicsSpawnMode) {
+        const motionObj = new MotionObject(scene, spawnPos, { mesh });
+        kinematicsSimulation.addObject(motionObj);
+        return;
+    }
 
     // Physics
     const shape = new CANNON.Box(new CANNON.Vec3(size / 2, size / 2, size / 2));
@@ -536,21 +515,16 @@ window.spawnBreakableBox = () => {
 
 };
 
-// --- PROJECTILE SPAWN ---
-window.spawnProjectile = () => {
+// --- KINEMATICS SPAWN ---
+window.spawnMotionObject = () => {
     const p = player.body.position;
     // Spawn 5 units in front of where the player is looking
     const spawnPos = new THREE.Vector3(0, 0, -5).applyQuaternion(camera.quaternion).add(p);
     // Ensure it spawns at least at ground level
     if (spawnPos.y < 0.35) spawnPos.y = 0.35;
 
-    const projectile = new Projectile(scene, spawnPos);
-
-    // Set launch direction to where the player is facing (horizontal)
-    const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
-    projectile.setLaunchDirection(dir);
-
-    physicsSimulation.addProjectile(projectile);
+    const motionObj = new MotionObject(scene, spawnPos);
+    kinematicsSimulation.addObject(motionObj);
     updateUI();
 };
 
@@ -565,42 +539,45 @@ window.addEventListener('mousedown', (e) => {
     if (!player.controls.isLocked) return;
     e.preventDefault();
 
-    // Raycast from screen center to find ANY interactable object
+    // Raycast from screen center
     const center = new THREE.Vector2(0, 0);
     raycaster.setFromCamera(center, camera);
 
-    // Build a list of all meshes we can launch:
-    // 1. Unlaunched dedicated projectile meshes
-    const projectileMeshes = physicsSimulation.projectiles
-        .filter(p => !p.isLaunched)
-        .map(p => p.mesh)
+    // Build list of all interactable meshes
+    const regularMeshes = objectsToUpdate.map(o => o.mesh);
+    const kinematicsMeshes = kinematicsSimulation.motionObjects
+        .map(m => m.mesh)
         .filter(Boolean);
 
-    // 2. All regular physics object meshes (boxes, spheres, glass, walls, etc.)
-    const regularMeshes = objectsToUpdate.map(o => o.mesh);
-
-    const allMeshes = [...projectileMeshes, ...regularMeshes];
+    const allMeshes = [...regularMeshes, ...kinematicsMeshes];
     if (allMeshes.length === 0) return;
 
     const intersects = raycaster.intersectObjects(allMeshes);
-    if (intersects.length > 0 && projectileUI) {
+    if (intersects.length > 0) {
         const hitMesh = intersects[0].object;
 
-        // Capture launch direction (where player is facing, horizontal)
-        const launchDir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
-        // Current world gravity magnitude (positive value)
-        const worldGravMag = Math.abs(SETTINGS.gravity);
-
-        // Check if it's a dedicated Projectile
-        if (hitMesh.userData.isProjectile && hitMesh.userData.projectileRef) {
-            projectileUI.open(hitMesh.userData.projectileRef, launchDir, worldGravMag);
+        // Already a MotionObject → just open the panel
+        if (hitMesh.userData.isMotionObject && hitMesh.userData.motionObjectRef && kinematicsUI) {
+            kinematicsUI.open(hitMesh.userData.motionObjectRef);
             return;
         }
 
-        // Otherwise it's a regular physics object
+        // Regular physics object → convert it to a MotionObject on the fly
         const obj = objectsToUpdate.find(o => o.mesh === hitMesh);
-        if (obj) {
-            projectileUI.open(obj, launchDir, worldGravMag);
+        if (obj && kinematicsUI) {
+            // Remove from physics world
+            world.removeBody(obj.body);
+            const idx = objectsToUpdate.indexOf(obj);
+            if (idx > -1) objectsToUpdate.splice(idx, 1);
+
+            // Create a MotionObject wrapping this mesh
+            const pos = new THREE.Vector3().copy(hitMesh.position);
+            const motionObj = new MotionObject(scene, pos, { mesh: hitMesh });
+            kinematicsSimulation.addObject(motionObj);
+
+            // Open the kinematics panel for it
+            kinematicsUI.open(motionObj);
+            return;
         }
     }
 });
@@ -657,6 +634,12 @@ window.spawnWall = () => {
     mesh.receiveShadow = true;
     scene.add(mesh);
 
+    if (window.isKinematicsSpawnMode) {
+        const motionObj = new MotionObject(scene, spawnPos, { mesh });
+        kinematicsSimulation.addObject(motionObj);
+        return;
+    }
+
     // Physics (Mass 0 = Static)
     const shape = new CANNON.Box(new CANNON.Vec3(size.x / 2, size.y / 2, size.z / 2));
     const body = new CANNON.Body({ mass: 0, position: new CANNON.Vec3(spawnPos.x, spawnPos.y, spawnPos.z), shape: shape, material: defaultMaterial });
@@ -678,9 +661,10 @@ window.resetWorld = () => {
     });
     objectsToUpdate.length = 0;
 
-    // Also clear all projectiles
-    if (projectileUI && projectileUI.isOpen) projectileUI.close();
-    physicsSimulation.removeAll();
+    // Clear all kinematics objects
+    if (kinematicsUI && kinematicsUI.isOpen) kinematicsUI.close();
+    kinematicsSimulation.removeAll();
+    if (kinematicsGraph) kinematicsGraph.clearData();
 
     updateUI();
 };
@@ -783,15 +767,15 @@ window.addEventListener('keydown', (e) => {
         case 'r': window.spawnTower(); break;
         case 'y': window.spawnBreakableBox(); break;
         case 'u': window.spawnWall(); break;
-        case 'p': window.spawnProjectile(); break;
+        case 'k': window.toggleKinematicsMode(); break;
         case '1': window.selectTool('weld'); break;
         case '2': window.selectTool('rope'); break;
         case 'g': window.toggleGravity(); break;
         case 't': window.toggleTime(); break;
         case 'escape':
-            // Close projectile panel if open, otherwise reset world
-            if (projectileUI && projectileUI.isOpen) {
-                projectileUI.close();
+            // Close panels if open, otherwise reset world
+            if (kinematicsUI && kinematicsUI.isOpen) {
+                kinematicsUI.close();
             } else {
                 window.resetWorld(); player.controls.unlock();
             }
@@ -850,8 +834,14 @@ const tick = () => {
     // Update Player
     player.update(deltaTime);
 
-    // Update Projectile Simulation (kinematics, independent of Cannon physics)
-    physicsSimulation.update(deltaTime);
+    // Update Kinematics Simulation (new motion objects)
+    kinematicsSimulation.update(deltaTime);
+
+    // Update Kinematics Graphs
+    if (kinematicsGraph) {
+        kinematicsGraph.pushSample();
+        kinematicsGraph.render();
+    }
 
     // Sync Objects
     for (const obj of objectsToUpdate) {
@@ -880,8 +870,9 @@ window.addEventListener('resize', () => {
     composer.setSize(window.innerWidth, window.innerHeight);
 });
 
-// --- Initialise ProjectileUI (DOM is ready by this point) ---
-projectileUI = new ProjectileUI(physicsSimulation, player.controls, scene);
+// --- Initialise UI (DOM is ready by this point) ---
+kinematicsGraph = new KinematicsGraph(document.getElementById('kinematics-graphs'));
+kinematicsUI = new KinematicsUI(kinematicsSimulation, player.controls, kinematicsGraph);
 
 // Initialize Environment
-window.changeEnvironment('graph');
+window.changeEnvironment('field');

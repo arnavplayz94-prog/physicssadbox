@@ -35,7 +35,7 @@
                 <select id="env-select" onchange="window.changeEnvironment(this.value)">
                     <option value="graph">NEON GRAPH</option>
                     <option value="moon">MOON BASE</option>
-                    <option value="field">GREEN FIELD</option>
+                    <option value="field" selected>GREEN FIELD</option>
                 </select>
             </div>
         </header>
@@ -49,8 +49,8 @@
                 <button onclick="window.spawnBreakableBox()" style="color: cyan; border-color: cyan;">GLASS BOX
                     [Y]</button>
                 <button onclick="window.spawnWall()" style="color: #bbb; border-color: #bbb;">WALL [U]</button>
-                <button onclick="window.spawnProjectile()" style="color: #ff8800; border-color: #ff8800;">PROJECTILE
-                    [P]</button>
+                <button onclick="window.toggleKinematicsMode()" id="btn-kinematics"
+                    style="color: #00ffff; border-color: #00ffff;">KINEMATICS [OFF] [K]</button>
             </div>
 
             <div class="control-group">
@@ -91,35 +91,36 @@
             </div>
         </div>
 
-        <!-- Projectile Parameter Panel (hidden by default) -->
-        <div id="projectile-panel">
-            <h2>PROJECTILE LAUNCHER</h2>
-            <div class="proj-slider-group">
-                <label>VELOCITY: <span id="proj-vel-val">20</span> m/s</label>
-                <input type="range" id="proj-velocity" min="1" max="100" value="20" step="1">
+        <!-- Kinematics Parameter Panel (hidden by default) -->
+        <div id="kinematics-panel">
+            <h2>KINEMATICS LAB</h2>
+            <div class="kin-mode-row">
+                <label>MODE</label>
+                <select id="kin-mode-select">
+                    <option value="linear">Uniform Linear</option>
+                    <option value="accelerated">Accelerated (SUVAT)</option>
+                    <option value="freefall">Free Fall</option>
+                    <option value="projectile">Projectile Motion</option>
+                    <option value="circular">Circular Motion</option>
+                    <option value="relative">Relative Motion</option>
+                </select>
             </div>
-            <div class="proj-slider-group">
-                <label>ANGLE: <span id="proj-ang-val">45</span>°</label>
-                <input type="range" id="proj-angle" min="0" max="90" value="45" step="1">
+            <div id="kin-sliders"></div>
+            <div id="kin-stats" class="kin-stats"></div>
+            <div class="kin-graph-toggles">
+                <label><input type="checkbox" id="kin-graph-pos" checked> Position</label>
+                <label><input type="checkbox" id="kin-graph-vel" checked> Velocity</label>
+                <label><input type="checkbox" id="kin-graph-acc"> Acceleration</label>
             </div>
-            <div class="proj-slider-group">
-                <label>GRAVITY: <span id="proj-grav-val">9.8</span> m/s²</label>
-                <input type="range" id="proj-gravity" min="1" max="50" value="9.8" step="0.1">
-            </div>
-            <div class="proj-slider-group">
-                <label>MASS: <span id="proj-mass-val">1.0</span> kg</label>
-                <input type="range" id="proj-mass" min="0.1" max="50" value="1" step="0.1">
-            </div>
-            <div class="proj-stats">
-                <div class="proj-stat"><span>Time of Flight</span><span id="proj-stat-flight">—</span></div>
-                <div class="proj-stat"><span>Max Height</span><span id="proj-stat-height">—</span></div>
-                <div class="proj-stat"><span>Range</span><span id="proj-stat-range">—</span></div>
-            </div>
-            <div class="proj-buttons">
-                <button id="proj-launch-btn" class="proj-launch">LAUNCH</button>
-                <button id="proj-cancel-btn" class="proj-cancel">CANCEL</button>
+            <div class="kin-buttons">
+                <button id="kin-launch-btn" class="kin-launch">LAUNCH</button>
+                <button id="kin-reset-btn" class="kin-reset">RESET</button>
+                <button id="kin-cancel-btn" class="kin-cancel">CANCEL</button>
             </div>
         </div>
+
+        <!-- Kinematics Graphs Container -->
+        <div id="kinematics-graphs"></div>
 
         <!-- Crosshair -->
         <div id="crosshair"></div>

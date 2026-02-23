@@ -10,8 +10,8 @@ export class PlayerController {
         this.domElement = domElement;
 
         // Configuration
-        this.walkSpeed = 10;
-        this.flySpeed = 20;
+        this.walkSpeed = 30;
+        this.flySpeed = 60;
         this.jumpForce = 8;
         this.height = 1.8;
         this.isFlying = true; // Start in creative flight
@@ -93,8 +93,8 @@ export class PlayerController {
     setupInputs() {
         // Simple Lock Logic: Click anywhere to start (EXCEPT UI)
         document.addEventListener('click', (e) => {
-            // Check if clicking on UI (Selector, Buttons, Projectile Panel)
-            if (e.target.closest('.env-selector') || e.target.closest('button') || e.target.tagName === 'SELECT' || e.target.closest('#projectile-panel')) {
+            // Check if clicking on UI (Selector, Buttons, Kinematics Panel)
+            if (e.target.closest('.env-selector') || e.target.closest('button') || e.target.tagName === 'SELECT' || e.target.closest('#kinematics-panel')) {
                 return;
             }
 
